@@ -402,7 +402,7 @@ def processUserIdIsFallbackBot(msg):
 def processUserIdInternal(chat, type = "User"):
     if not chat:
         return "Unknown Data"
-    return f"{type} ID: {chat["id"]}"
+    return f"{type} ID: <code>{chat["id"]}</code>"
 
 def processUserId(msg):
     if "reply_to_message" in msg:
