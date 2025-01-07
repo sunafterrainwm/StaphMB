@@ -386,6 +386,47 @@ def processCheck(msg,api,db):
         data = db[2].data
         api.sendMessage(message['message']['chat']['id'],'Checking your warnings... Not Implemented.',{'reply_to_message_id':message['message']['message_id']})
 
+def processUserIdIsFallbackBot(msg):
+    from_chat = "from" in msg and msg["from"] or False
+    if not from_chat:
+        return {"chat": False}
+    fwdChat = ("forward_origin" in msg and msg["forward_origin"]["type"] == "channel") and msg["forward_origin"] or False
+    if from_chat["id"] == 777000 and fwdChat: # Telegram
+        return {"type": "Link Channel", "chat": fwdChat["chat"]}
+    elif from_chat["id"] == 1087968824: # GroupAnonymousBot
+        return {"type": "Group", "chat": msg["chat"]}
+    elif from_chat["id"] == 136817688 and "sender_chat" in msg: # Channel Bot
+        return {"type": "Channel", "chat": msg["sender_chat"]};
+    return {"chat": from_chat}
+
+def processUserIdInternal(chat, type = "User"):
+    if not chat:
+        return "Unknown Data"
+    return f"{type} ID: {chat["id"]}"
+
+def processUserId(msg):
+    if "reply_to_message" in msg:
+        reply_to_message = msg["reply_to_message"]
+        if "forward_origin" in reply_to_message:
+            forward_origin = reply_to_message["forward_origin"]
+            data = {}
+            if forward_origin["type"] == "user":
+                data = {"chat": forward_origin["sender_user"]}
+            elif forward_origin["type"] == "channel":
+                t = forward_origin["chat"]["type"]
+                t = t[0].upper() + t[1:]
+                data = {"type": t, "chat": forward_origin["chat"]}
+            elif forward_origin["type"] == "chat":
+                t = forward_origin["sender_chat"]["type"]
+                t = t[0].upper() + t[1:]
+                data = {"type": t, "chat": forward_origin["sender_chat"]}
+        if data:
+            return f"Forward From {processUserIdInternal(**data)}"
+        else:
+            return f"Reply to {processUserIdInternal(**processUserIdIsFallbackBot(reply_to_message))}"
+    else:
+        return f"Your {processUserIdInternal(**processUserIdIsFallbackBot(msg))}"
+
 def processItem(message,db,api):
     #print(message)
     api.logOut.writeln(str(message['update_id'])+' being processed...')
@@ -556,7 +597,7 @@ def processItem(message,db,api):
             elif stripText == '/groupid':
                 api.sendMessage(message['message']['chat']['id'],'Group ID: <code>'+str(message['message']['chat']['id'])+'</code>',{'reply_to_message_id':message['message']['message_id']})
             elif stripText == "/userid":
-                api.sendMessage(message['message']['chat']['id'],'User ID: <code>'+str(message['message']['reply_to_message']['forward_from']['id'] if ('reply_to_message' in message['message'] and 'forward_from' in message['message']['reply_to_message']) else message['message']['reply_to_message']['from']['id'] if 'reply_to_message' in message['message'] else message['message']['from']['id'])+'</code>',{'reply_to_message_id':message['message']['message_id']})
+                api.sendMessage(message['message']['chat']['id'],processUserId(message),{'reply_to_message_id':message['message']['message_id']})
             elif stripText == '/lastid':
                 api.sendMessage(message['message']['chat']['id'],'Last Message ID: <code>'+str(message['update_id'])+'</code>',{'reply_to_message_id':message['message']['message_id']})
             elif stripText == '/uptime':
